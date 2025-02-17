@@ -11,7 +11,7 @@ import tensorflow as tf
 app = FastAPI()
 
 
-MODEL = tf.keras.models.load_model("api/bellpepper_model.h5")
+MODEL = tf.keras.models.load_model("bellpepper_model.h5")
 
 CLASS_NAMES = ["Pepper,_bell___Bacterial_spot", "Pepper,_bell___healthy"]
 
