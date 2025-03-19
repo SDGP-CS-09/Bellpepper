@@ -9,11 +9,11 @@ import tensorflow as tf  # For loading and using the TensorFlow model
 # Initialize the FastAPI application instance
 app = FastAPI()
 
-# Load the pre-trained model with error handling
+# Load the pre-trained bell pepper model with error handling
 try:
-    MODEL = tf.keras.models.load_model("bellpepper_model.h5")  # Load the saved TensorFlow model from file
+    MODEL = tf.keras.models.load_model("bellpepper_model.h5")  # Load the saved TensorFlow model for bell pepper
 except Exception as e:
-    raise RuntimeError(f"Failed to load model: {str(e)}")  # Raise an error if model loading fails
+    raise RuntimeError(f"Failed to load bell pepper model: {str(e)}")  # Raise an error if model loading fails
 
 # List of class names representing possible bell pepper conditions
 CLASS_NAMES = ["Pepper,_bell___Bacterial_spot", "Pepper,_bell___healthy"]
@@ -22,7 +22,7 @@ CLASS_NAMES = ["Pepper,_bell___Bacterial_spot", "Pepper,_bell___healthy"]
 @app.get("/ping")
 async def ping():
     """Returns a welcome message to verify API is running"""
-    return "Welcome to bellpepper disease prediction API!"  # Return a static string to confirm API is active
+    return "Welcome to Bell Pepper disease prediction API!"  # Updated to reflect bell pepper focus
 
 # Function to convert uploaded image data to a numpy array
 def read_file_as_image(data) -> np.ndarray:
@@ -41,6 +41,36 @@ def read_file_as_image(data) -> np.ndarray:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")  # Handle image processing errors
 
+# Function to determine if an image is likely a bell pepper leaf (adapted from corn leaf check)
+def is_likely_bell_pepper_leaf(image: np.ndarray) -> bool:
+    """
+    Check if image is likely a bell pepper leaf using color and variance
+    Args:
+        image: Image as numpy array
+    Returns:
+        bool: True if likely a bell pepper leaf, False otherwise
+    """
+    try:
+        # Calculate the average RGB color across the image
+        mean_color = np.mean(image, axis=(0, 1))  # Average over height and width dimensions
+        r, g, b = mean_color  # Extract red, green, blue values
+        
+        # Check if green is the dominant color (common for bell pepper leaves)
+        if not (g > r and g > b and g > 50):  # Green should exceed red, blue, and a minimum threshold
+            return False
+        
+        # Calculate color variance to detect texture (leaves have variation, solid backgrounds don’t)
+        color_variance = np.var(image, axis=(0, 1))  # Variance of R, G, B channels
+        total_variance = np.sum(color_variance)  # Sum variances to get overall texture measure
+        
+        # Reject images with low variance (likely solid backgrounds)
+        if total_variance < 100:  # Threshold to distinguish uniform vs. textured images (tune as needed)
+            return False
+        
+        return True  # Image passes both color and variance checks
+    except Exception:
+        return False  # If any error occurs, assume it’s not a bell pepper leaf
+
 # Define the prediction endpoint for disease classification
 @app.post("/predict")
 async def predict(
@@ -51,7 +81,7 @@ async def predict(
     Args:
         file: Uploaded image file (multipart/form-data)
     Returns:
-        dict: Prediction results with class and confidence
+        dict: Prediction results with class and confidence, or error message if not a bell pepper leaf
     Raises:
         HTTPException: If prediction fails or input is invalid
     """
@@ -66,6 +96,14 @@ async def predict(
             
         # Convert the uploaded file to a numpy array
         image = read_file_as_image(await file.read())  # Read file content and process it
+        
+        # Check if the image is likely a bell pepper leaf
+        if not is_likely_bell_pepper_leaf(image):
+            return {
+                "message": "This does not appear to be a bell pepper leaf image",  # Inform user of invalid input
+                "class": None,  # No class predicted
+                "confidence": None  # No confidence score
+            }
         
         # Prepare image for model prediction
         img_batch = np.expand_dims(image, 0)  # Add batch dimension for model input
@@ -89,11 +127,11 @@ async def predict(
 if __name__ == "__main__":
     """
     Start the FastAPI server
-    Uses port from environment variable PORT or defaults to 8000
+    Uses port from environment variable PORT or defaults to 8060
     """
     try:
         # Get the port number from environment variable or use default
-        port = int(os.getenv("PORT", 8000))  # Convert PORT to integer or use 8000
+        port = int(os.getenv("PORT", 8060))  # Convert PORT to integer or use 8060
         # Run the FastAPI app with uvicorn on all network interfaces
         uvicorn.run(app, host="0.0.0.0", port=port)
     except ValueError as e:
